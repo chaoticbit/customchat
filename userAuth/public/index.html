@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>User Authentication</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular-cookies.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="/css/bootstrap.min.css" media="screen" title="no title" charset="utf-8">
+    <link rel="stylesheet" href="stylesheets/style.css" media="screen" title="no title" charset="utf-8">
+  </head>
+  <body class="bg-cyan">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-12 col-md-12">
+                <div class="row banner bg-darkCyan">
+                    <h3 class="vc">Welcome to Quack Messenger</h3>
+                </div>
+            </div>
+        </div>
+        <div class="row" ng-app="authApp">
+            <div class="col-md-3"></div>
+            <div class="col-sm-12 col-md-6" ng-controller="loginCtrl">
+                <div class="row bg-white panel">
+                    <h5 class="txt-center">Login to Quack</h5>
+                    <div class="login-pane">
+                        <form name="loginForm" ng-submit="validate()">
+                            <input type="text" name="username" required class="txt-general" placeholder="Username" ng-model="username" />
+                            <input type="password" name="password" required class="txt-general" placeholder="Password" ng-model="password" />
+                            <div class="row" style="padding: 10px 0 0 0;">
+                                <div class="col-sm-12 col-md-12">
+                                    <button type="submit" class="btn-general bg-activeGreen">Login</button>
+                                </div>
+                            </div>
+                            <span>{{token}}</span>
+                        </form>
+                        <div class="row" style="padding: 10px 0 0 0;">
+                          <div class="col-sm-12 col-md-6">
+                            <button class="btn-general fg-white fbAuth" style="background: #3b5988;">
+                                <a href="/auth/facebook" class="fg-white">Facebook</a>
+                            </button>
+                          </div>
+                          <div class="col-sm-12 col-md-6">
+                            <button class="btn-general fg-white gglAuth" style="background: rgb(197,64,44);">
+                                <a href="/auth/google" class="fg-white">Google</a>
+                            </button>
+                          </div>
+                        </div>
+                    </div>
+                  </div>              
+            </div>
+            <div class="col-md-3"></div>
+        </div>
+    </div>
+      <!-- <div class="container">
+          <div class="row">
+            <div ng-app="authApp">
+              <div class="col-md-5 panel" ng-controller="loginCtrl">
+                <form name="loginForm" ng-submit="validate()">
+                    <h4>User Login</h4>
+                    <p>
+                        <span>Username</span><br>
+                        <input type="text" class="form-control" minlength="5" required name="username" ng-model="username" />
+                        <span ng-show="{{loginForm.username.$error.required}}">Cannot be empty</span>
+                    </p>
+                    <p>
+                        <span>Password</span><br>
+                        <input type="password" class="form-control" required name="password" ng-model="password" />
+                    </p>
+                    <p><button type="submit" class="btn btn-success  " name="button">Login</button></p>
+                </form>
+                <button type="button" name="callbtn" style="display:none;" class="btn btn-primary some-call-btn" ng-click="verify()">Some call</button>
+                <p><span>{{usrinfo}}</span></p>
+              </div>
+              <div class="col-md-5 panel" ng-controller="signupCtrl" style="margin: 0 20px;">
+                <form name="singupForm" ng-submit="register()">
+                    <h4>User Signup</h4>
+                    <p>
+                        <span>Username</span><br>
+                        <input type="text" class="form-control" minlength="5" required name="username" ng-model="username" />
+                    </p>
+                    <p>
+                        <span>Email</span><br>
+                        <input type="text" class="form-control" name="email" ng-model="email" />
+                    </p>
+                    <p>
+                        <span>Password</span><br>
+                        <input type="password" class="form-control" required name="password" ng-model="password" />
+                    </p>
+                    <p>
+                        <span>Confirm Password</span><br>
+                        <input type="password" class="form-control" required name="cnfpassword" ng-model="cnfpassword" />
+                    </p>
+                    <p>
+                        <button type="submit" class="btn btn-primary" name="button">Signup</button>
+                    </p>
+                    <p>
+                      <span>{{result}}</span>
+                    </p>
+                </form>
+              </div>
+            </div>
+          </div>
+      </div> -->
+      <script>
+        var app = angular.module('authApp',['ngCookies']);
+        var baseurl = "http://localhost:3000/";
+        app.controller('loginCtrl',function($scope, $http, $cookies){
+            $scope.validate = function() {
+                var req = {
+                    username: $scope.username,
+                    password: $scope.password
+                }
+                $http.post(baseurl + "auth/", req).then(function(response, status){
+                    var res = response.data;
+                    if(res.success){
+                        //document.getElementsByClassName('some-call-btn')[0].style.display = 'block';
+                        //$scope.token = res.token;
+                        $cookies.put('username',$scope.username);
+                        window.location.href = "chat.html"
+                    }
+                    else {
+                        $scope.token = "Unauthorized User";
+                    }
+                });
+            };
+            $scope.verify = function() {
+                $http.post(baseurl + "users/me/",{ headers: {'Authorization': $scope.token}}).then(function(response, status) {
+                      var res = response.data;
+                      $scope.usrinfo = res.user;
+                });
+            }
+        });
+        app.controller('signupCtrl', function($scope, $http) {
+            $scope.register = function() {
+                var param = {
+                    username: $scope.username,
+                    email: $scope.email,
+                    password: $scope.password,
+                    cnfpassword: $scope.cnfpassword
+                }
+                $http.post(baseurl + "users/register/", param).then(function(response, status){
+                    var res = response.data;
+                    if(res.success) {
+                        $scope.result = 'Registered';
+                    }
+                    else{
+                        $scope.result = res.err[0].msg;
+                    }
+                });
+            }
+        });
+      </script>
+  </body>
+</html>

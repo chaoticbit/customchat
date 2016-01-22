@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Chat room</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <script src="http://code.jquery.com/jquery-1.12.0.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.4.8/angular.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="/css/bootstrap.min.css" media="screen" title="no title" charset="utf-8">
+    <link rel="stylesheet" href="stylesheets/style.css" media="screen" title="no title" charset="utf-8">
+  </head>
+  <body class="bg-cyan">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-sm-12 col-md-12">
+                <div class="row banner bg-darkCyan">
+                    <h3 class="vc">Welcome to Quack Messenger</h3>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-3">
+                <div class="row bg-white panel">
+                    <input type="text" class="txt-general createRoomInput" name="roomname" placeholder="Create a room &crarr;" />
+                    <div style="padding: 10px 0 0 0;">
+                        <span class="bold">Rooms</span>
+                        <div class="roomlist" id="roomlist">
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-12 col-md-6">
+                <div class="row bg-white panel">
+                    <h5 class="txt-center">Let all people know what you say!</h5>
+                    <div class="login-pane">
+                        <input type="text" name="msg" class="txt-general msg-input" placeholder="Message" />
+                        <div class="row" style="padding: 10px 0 0 0;">
+                            <div class="col-sm-12 col-md-12">
+                                <button class="btn-general bg-activeGreen sendMsg">Send</button>
+                            </div>
+                        </div>
+                    </div>
+              </div>
+              <div class="row bg-white panel" style="margin-top: 15px;">
+                  <h5>Messages</h5>
+                  <div class="msg-list" style="overflow: auto;">
+                      <ul>
+
+                      </ul>
+                  </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+                <div class="row bg-white panel">
+                    <h6>Clients connected : <label class="au" style="font-weight: 500;"></label></h6>
+                    <div class="cn">
+                        <ul>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+      <script>
+        var app = angular.module('msgApp',[]);
+        var baseurl = "http://localhost:3000/";
+        var socket = io.connect(baseurl);
+
+        socket.on('connect', function(){
+            socket.emit('adduser', prompt("What's your name: "));
+        });
+        socket.on('updatechat', function(username, data) {
+            $('.msg-list > ul').append('<li>' + username + ': ' + data +'</li>');
+        });
+        socket.on('totalusers', function(cnt) {
+            $('.au').html(cnt);
+        });
+        socket.on('updaterooms', function(rooms, currRoom) {
+            $('.roomlist').empty();
+            $.each(rooms, function(key, value) {
+                if(value == currRoom) {
+                    $('.roomlist').append('<span>' + value + '</span>');
+                }
+                else{
+                    $('.roomlist').append('<span class="srt"><a href="#">' + value + '</a></span>');
+                }
+            });
+        });
+        $(document).on('click','.srt', function(){
+            socket.emit('switchRoom', $('.srt').text());
+        });
+        $(function(){
+            $('.sendMsg').click(function () {
+                var msg = $('.msg-input').val();
+                $('.msg-input').val('').focus();
+                socket.emit('sendchat', msg);
+            });
+            $('.msg-input').keydown(function(e) {
+                if(e.keyCode == 13) {
+                    $(this).blur();
+                    $('.sendMsg').focus().click();
+                }
+            });
+            $('.createRoomInput').keydown(function(e) {
+                if(e.keyCode == 13) {
+                    var roomname = $(this).val();
+                    $(this).val('');
+                    socket.emit('create', roomname);
+                    $('.roomlist').append('<span class="srt"><a href="#">' + roomname + '</a></span>');
+                }
+            });
+        });
+
+
+        // var name = 'atharva';
+        // if(name != null) {
+        //     socket.emit('add user',name);
+        //     $('.cn > ul').append('<li>' + name + ' connected</li>');
+        // }
+        // socket.on('new message', function(msg) {
+        //     $('.msg-list > ul').append('<li>' + msg + '</li>');
+        // });
+        // socket.on('users', function(cnt) {
+        //     $('.au').html(cnt);
+        // });
+        // socket.on('update', function(fullname) {
+        //     $('.cn > ul').append('<li>' + fullname + ' disconnected</li>');
+        // });
+        // socket.on('client name', function(name) {
+        //     $('.cn > ul').append('<li>' + name + ' connected</li>');
+        // });
+        // app.controller('viewCtrl', function($scope) {
+        //     $scope.sendMessage = function() {
+        //         var msg = $('.msg-input').val();
+        //         $('.msg-list > ul').append('<li>' + msg + '</li>');
+        //         $('.msg-input').val('').focus();
+        //         socket.emit('sendMessage',msg);
+        //     }
+        //     $scope.onEnter = function($event) {
+        //         if ($event.keyCode == 13) {
+        //             $scope.sendMessage();
+        //         }
+        //     }
+        // });
+      </script>
+  </body>
+</html>
