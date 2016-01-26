@@ -879,6 +879,7 @@ ul.inline > li{
     border-bottom: 1px solid rgba(235,235,235,0.9);
     cursor: pointer;
     transition: all 0.2s ease-in-out;
+    display: block;
 }
 .userslist > ul > li:hover{
     background: rgba(235,235,235,0.9);
@@ -897,7 +898,16 @@ ul.inline > li{
 .avatar > span{
     font-size: 20px;
 }
-
+.chatheadpane {
+    min-height: 50px;
+}
+.conv > div > ul > li {
+    padding: 10px;
+    border-bottom: 1px solid rgba(235,235,235,0.4);
+}
+.highlight-bg{
+    background: #ffffcc;
+}
 /*mobile portrait */
 @media only screen and (min-width : 0px) and (max-width : 480px) {
     .banner{height: 80px;}

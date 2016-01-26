@@ -32,6 +32,12 @@
                         <div class="chatheadpane bg-activeGreen">
                             <p class="bold fg-white"></p>
                         </div>
+                        <div class="conv" style="height: 64vh;">
+                            
+                        </div>
+                        <div style="border-top: 2px solid #DDD;">
+                            <input type="text" class="txt-general msg-input" style="padding-bottom: 9px;" placeholder="Enter a message" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -43,31 +49,65 @@
         var u;
         var baseurl = "http://localhost:3000/";
         var socket = io.connect(baseurl);
-        
+        var roomId = '4d5e6f1a3u3l2t';
         var app = angular.module('chatApp',['ngCookies']);
         app.controller('chatCtrl',function($scope, $cookies) {
             u = $cookies.get('username');
+            if(u == null){
+                window.location.href = '/';
+            }
             $scope.username = u;
         });
 
         socket.on('connect',function() {
             socket.emit('adduser',u);
         });
-
-        socket.on('updateusers', function(username) {
+        socket.on('updateusers', function(username,socketid) {
             $('.userslist > ul').empty();
-            $('.userslist > ul').append('<li><div class="row"><div class="col-md-3"><div class="avatar bg-mauve"><span class="fg-white">' + username.charAt(0) + '</span></div></div><div class="col-md-9"><h5 class="light" style="line-height:48px;">' + username + '</h5></div></div></li>');
-            socket.emit('updatelist',username);
+            $('.conv').append('<div id="' + username + '" style="display:none;height: 64vh;"><ul></ul></div>');
+            $('.userslist > ul').append('<li data-name="' + username + '" data-id="' + socketid + '"><div class="row"><div class="col-md-3"><div class="avatar bg-mauve"><span class="fg-white">' + username.charAt(0) + '</span></div></div><div class="col-md-9"><h5 class="light" style="line-height:48px;">' + username + '</h5></div></div></li>');
+            socket.emit('updatelist');
         });
-        socket.on('updatelist',function(arr, currUser) {
+        $(document).on('click','.userslist > ul > li', function() {
+            $('.chatheadpane > p').html($(this).attr('data-name'));
+            $('.conv').find('div').hide();
+            $('body').find('#' + $(this).attr('data-name')).show();
+        });
+        socket.on('updatelist',function(arr) {
             $('.userslist > ul').empty();
             $.each(arr,function(key, value) {
-                if(value != currUser){
-                    $('.userslist > ul').append('<li><div class="row"><div class="col-md-3"><div class="avatar bg-mauve"><span class="fg-white">' + value.charAt(0) + '</span></div></div><div class="col-md-9"><h5 class="light" style="line-height:48px;">' + value + '</h5></div></div></li>');
+                if(value.username != u){
+                    $('.userslist > ul').append('<li data-name="' + value.username + '"><div class="row"><div class="col-md-3"><div class="avatar bg-mauve"><span class="fg-white">' + value.username.charAt(0) + '</span></div></div><div class="col-md-9"><h5 class="light" style="line-height:48px;">' + value.username + '</h5></div></div></li>');
+                    $('.conv').append('<div id="' + value.username + '" style="display:none;height: 64vh;"><ul></ul></div>');
                 }
             });
         });
-
+        socket.on('disconnected', function(username) {
+            $('body').find("[data-name='"+username+"']").remove();
+        });
+        $('.msg-input').on('keydown',function(e) {
+            if(e.keyCode == 13) {
+                var payload = {
+                    from: u,
+                    to: $('.chatheadpane > p').text(),
+                    msg: $(this).val(),
+                    date: Date()
+                };
+                socket.emit('sendchat',payload);
+                $('body').find('#' + payload.to + ' > ul').append('<li>' + $(this).val() + '</li>');
+                $(this).val('');
+            }
+        });
+        socket.on('updatechat',function(payload) {
+            console.log(payload);
+            $('body').find('#' + payload.to + ' > ul').append('<li>' + payload.msg + '</li>');
+            $('body').find('#' + payload.from + ' > ul').append('<li>' + payload.msg + '</li>');
+            $('body').find("[data-name='"+payload.from+"']").addClass("highlight-bg").delay(1000).queue(function(next){
+                $(this).removeClass("highlight-bg");
+                next();
+            });
+            //$('.conv > ul').append('<li>' + msg + '</li>');
+        })
     </script>
   </body>
 </html>

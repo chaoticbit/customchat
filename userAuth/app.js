@@ -13,6 +13,7 @@ var config = require('./oauth.js');
 var passport = require('passport');
 var FacebookStrategy = require('passport-facebook').Strategy;
 var GoogleStrategy = require('passport-google-oauth2').Strategy;
+var uuid = require('node-uuid');
 
 var app = express();
 app.io = require('socket.io')();
@@ -22,22 +23,78 @@ app.set('view engine', 'jade');
 
 //Socket.IO
 var clients = 0;
-var usernames = {};
-var rooms = ['Lobby'];
+var usernames = [];
+var defaultId = '4d5e6f1a3u3l2t';
+var rooms = [defaultId];
+var socketsArr = [];
+var toSocketId;
+
+function exists(obj, objs){
+    var objStr = JSON.stringify(obj);
+    for(var i=0;i<objs.length; i++){
+        if(JSON.stringify(objs[i]) == objStr){
+            return 1;
+        }
+    }
+    return 0;
+}
+
 
 app.io.on('connection',function(socket) {
-    socket.on('adduser', function(username) {
-        ++clients;
-        console.log('total active users: ' + clients);
-        socket.username = username;
-        socket.room = 'Lobby';
-        usernames[username] = username;
-        socket.join('Lobby');
-        socket.broadcast.to('Lobby').emit('updateusers',username);
-        //socket.emit('updaterooms',rooms,'Lobby');
+    socket.on('adduser', function(username,roomId) {
+        var obj = {
+            username : username,
+            socketId : socket.id
+        };
+        if(!exists(obj, usernames)) {
+            ++clients;
+            socket.username = username;
+            socket.room = roomId;
+            usernames.push(obj);
+        }
+        socket.join(defaultId);
+        socket.broadcast.emit('updateusers',username,socket.id);
+        console.log('usernames: ' + JSON.stringify(usernames));
     });
-    socket.on('updatelist',function(username){
-        socket.broadcast.to('Lobby').emit('updatelist',usernames,username);
+    socket.on('updatelist',function(){
+        socket.broadcast.to(defaultId).emit('updatelist',usernames);
+    });
+
+    socket.on('createroom',function(nameTo, u) {
+        var dynRoomId = uuid.v1();
+        rooms.push(dynRoomId);
+        socket.join(dynRoomId);
+        socket.room = dynRoomId;
+        //socket.broadcast.emit()
+    });
+
+    socket.on('sendchat',function(payload) {
+        // var dynRoomId = uuid.v1();
+        // rooms.push(dynRoomId);
+        // socket.join(dynRoomId);
+        // socket.room(dy)
+        var to = payload.to;
+        for(var i = 0; i < usernames.length; i++) {
+            if(usernames[i].username == to){
+                toSocketId = usernames[i].socketId;
+            }
+        }
+        app.io.sockets.connected[toSocketId].emit('updatechat', payload);
+        console.log('tosocketid: ' + toSocketId);
+        console.log(JSON.stringify(payload));
+
+    });
+
+    socket.on('disconnect', function() {
+        --clients;
+        for(var i = 0; i < usernames.length; i++) {
+            if(usernames[i].username == socket.username){
+                usernames.splice(i,1);
+            }
+        }
+        console.log('usernames: ' + JSON.stringify(usernames));
+        socket.broadcast.to(defaultId).emit('disconnected',socket.username);
+        socket.leave(socket.room);
     });
 });
 
