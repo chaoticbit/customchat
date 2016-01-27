@@ -85,6 +85,16 @@ app.io.on('connection',function(socket) {
 
     });
 
+    socket.on('typing',function(payload) {
+        var to = payload.to;
+        for(var i = 0; i < usernames.length; i++) {
+            if(usernames[i].username == to){
+                toSocketId = usernames[i].socketId;
+            }
+        }
+        app.io.sockets.connected[toSocketId].emit('isTyping', payload);
+    });
+
     socket.on('disconnect', function() {
         --clients;
         for(var i = 0; i < usernames.length; i++) {

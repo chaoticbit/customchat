@@ -51,6 +51,19 @@
         var socket = io.connect(baseurl);
         var roomId = '4d5e6f1a3u3l2t';
         var app = angular.module('chatApp',['ngCookies']);
+        var isOldTitle = true;
+        var oldTitle = "Chat";
+        var newTitle;
+        var interval = null;
+        function changeTitle() {
+            document.title = isOldTitle ? oldTitle : newTitle;
+            isOldTitle = !isOldTitle;
+        }
+        $(window).focus(function () {
+            clearInterval(interval);
+            $("title").text(oldTitle);
+            
+        });
         app.controller('chatCtrl',function($scope, $cookies) {
             u = $cookies.get('username');
             if(u == null){
@@ -64,7 +77,7 @@
         });
         socket.on('updateusers', function(username,socketid) {
             $('.userslist > ul').empty();
-            $('.conv').append('<div id="' + username + '" style="display:none;height: 64vh;"><ul></ul></div>');
+            //$('.conv').append('<div id="' + username + '" style="display:none;overflow:auto;height: 64vh;"><ul></ul></div>');
             $('.userslist > ul').append('<li data-name="' + username + '" data-id="' + socketid + '"><div class="row"><div class="col-md-3"><div class="avatar bg-mauve"><span class="fg-white">' + username.charAt(0) + '</span></div></div><div class="col-md-9"><h5 class="light" style="line-height:48px;">' + username + '</h5></div></div></li>');
             socket.emit('updatelist');
         });
@@ -78,14 +91,28 @@
             $.each(arr,function(key, value) {
                 if(value.username != u){
                     $('.userslist > ul').append('<li data-name="' + value.username + '"><div class="row"><div class="col-md-3"><div class="avatar bg-mauve"><span class="fg-white">' + value.username.charAt(0) + '</span></div></div><div class="col-md-9"><h5 class="light" style="line-height:48px;">' + value.username + '</h5></div></div></li>');
-                    $('.conv').append('<div id="' + value.username + '" style="display:none;height: 64vh;"><ul></ul></div>');
+                    $('.conv').append('<div id="' + value.username + '" class="uiScrollable"><ul></ul></div>');
                 }
             });
         });
         socket.on('disconnected', function(username) {
             $('body').find("[data-name='"+username+"']").remove();
         });
+        $('.msg-input').on('focus keyup',function(e) {
+            if(e.keyCode != 13 || $.trim($(this).val()) !== ''){
+                var payload = {
+                    from: u,
+                    to: $('.chatheadpane > p').text()
+                };
+                socket.emit('typing',payload);
+            }
+        });
         $('.msg-input').on('keydown',function(e) {
+            var height = 0;
+            $('.uiScrollable li').each(function(i, value){
+                height += parseInt($(this).height());
+            });
+            height += '';
             if(e.keyCode == 13) {
                 var payload = {
                     from: u,
@@ -94,20 +121,35 @@
                     date: Date()
                 };
                 socket.emit('sendchat',payload);
-                $('body').find('#' + payload.to + ' > ul').append('<li>' + $(this).val() + '</li>');
+                $('body').find('#' + payload.to + ' > ul').append('<li><div class="from-them"><p class="margin0">' + $(this).val() + '</p></div></li>');
+                $('.uiScrollable').animate({scrollTop: height});
                 $(this).val('');
             }
         });
+        socket.on('isTyping',function(payload) {
+            if($('#' + payload.from + ' .isTyping').length == 0){
+                $('body').find('#' + payload.from + ' > ul').append('<li><div class="from-me isTyping"><p class="margin0">typing...</p></div></li>');
+            }
+        });
         socket.on('updatechat',function(payload) {
+            var height = 0;
+            $('.uiScrollable li').each(function(i, value){
+                height += parseInt($(this).height());
+            });
+            height += '';
+
             console.log(payload);
-            $('body').find('#' + payload.to + ' > ul').append('<li>' + payload.msg + '</li>');
-            $('body').find('#' + payload.from + ' > ul').append('<li>' + payload.msg + '</li>');
+            // $('body').find('#' + payload.to + ' > ul').append('<li><div class="from-them"><p class="margin0">' + payload.msg + '</p></div></li>');
+            $('body').find('#' + payload.from + ' > ul').append('<li><div class="from-me"><p class="margin0">' + payload.msg + '</p></div></li>');
             $('body').find("[data-name='"+payload.from+"']").addClass("highlight-bg").delay(1000).queue(function(next){
                 $(this).removeClass("highlight-bg");
                 next();
             });
-            //$('.conv > ul').append('<li>' + msg + '</li>');
-        })
+            $('body').find('#' + payload.from + ' .isTyping').remove();
+            $('.uiScrollable').animate({scrollTop: height});
+            newTitle = payload.from + ' says...';
+            interval = setInterval(changeTitle, 700);  
+        });
     </script>
   </body>
 </html>
